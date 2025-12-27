@@ -1,138 +1,151 @@
-# 圍棋段位預測系統
+# Go Rank Prediction System
 
-## 專案概述
-這是一個基於深度學習的圍棋段位預測系統，使用多種模型融合技術來預測圍棋玩家的段位（1D-9D）。
+## Project Overview
+This is a deep-learning-based Go (Weiqi) rank prediction system that uses model ensembling to predict a player’s rank from **1D to 9D**.
 
-## 檔案說明
+---
 
-### 1. train.py - 模型訓練腳本
-**功能：** 訓練多個深度學習模型並進行模型融合
+## File Descriptions
 
-**主要特點：**
-- 支援 Transformer 和 BiLSTM 兩種序列模型
-- 使用 5-fold 交叉驗證進行模型評估
-- 整合 Tabular 特徵和 Meta-learning
-- 支援 GPU 加速訓練
-- 自動儲存訓練好的模型
+### 1. `train.py` — Model Training Script
+**Purpose:** Train multiple deep learning models and perform model ensembling.
 
-**使用方法：**
+**Key Features:**
+- Supports two sequence models: **Transformer** and **BiLSTM**
+- Uses **5-fold cross-validation** for evaluation
+- Integrates **tabular features** and **meta-learning**
+- Supports **GPU-accelerated** training
+- Automatically saves trained models
+
+**Usage:**
 ```bash
 python train.py --train_dir train_set --out_dir . --gpu --seq_len 120 --epochs 30
 ```
 
-**參數說明：**
-- `--train_dir`: 訓練資料目錄（預設：train_set）
-- `--out_dir`: 輸出目錄（預設：當前目錄）
-- `--gpu`: 使用 GPU 加速
-- `--seq_len`: 序列長度（預設：120）
-- `--epochs`: 訓練輪數（預設：30）
-- `--batch_size`: 批次大小（預設：128）
-- `--lr`: 學習率（預設：0.0003）
-- `--seed`: 隨機種子（預設：42）
+**Arguments:**
+- `--train_dir`: Training data directory (default: `train_set`)
+- `--out_dir`: Output directory (default: current directory)
+- `--gpu`: Enable GPU acceleration
+- `--seq_len`: Sequence length (default: 120)
+- `--epochs`: Number of training epochs (default: 30)
+- `--batch_size`: Batch size (default: 128)
+- `--lr`: Learning rate (default: 0.0003)
+- `--seed`: Random seed (default: 42)
 
-### 2. Q5.py - 預測腳本
-**功能：** 使用訓練好的模型對測試資料進行段位預測
+---
 
-**主要特點：**
-- 載入預訓練的模型堆疊
-- 支援多種模型融合策略
-- 自動處理測試檔案並生成預測結果
-- 輸出 CSV 格式的提交檔案
+### 2. `Q5.py` — Prediction Script
+**Purpose:** Use trained models to predict ranks for the test set.
 
-**使用方法：**
+**Key Features:**
+- Loads a pretrained stacked/ensemble model
+- Supports multiple ensembling strategies
+- Automatically processes test files and generates predictions
+- Outputs a CSV submission file
+
+**Usage:**
 ```bash
 python Q5.py --test_dir test_set --model_path model_stackx.pkl --out_csv submission.csv
 ```
 
-**參數說明：**
-- `--test_dir`: 測試資料目錄（預設：test_set）
-- `--model_path`: 模型檔案路徑（預設：model_stackx.pkl）
-- `--out_csv`: 輸出 CSV 檔案（預設：submission.csv）
+**Arguments:**
+- `--test_dir`: Test data directory (default: `test_set`)
+- `--model_path`: Path to model file (default: `model_stackx.pkl`)
+- `--out_csv`: Output CSV file (default: `submission.csv`)
 
-## 資料格式
+---
 
-### 輸入資料格式
-- **訓練資料：** `log_XD_policy_train.txt` (X = 1-9，代表段位)
-- **測試資料：** `X.txt` (X = 檔案編號)
+## Data Format
 
-### 資料內容
-每行包含：
-- 遊戲編號：`Game X:`
-- 棋步：`B[座標]` 或 `W[座標]`
-- 特徵向量：
-  - Policy 向量（9維）
-  - Value 向量（9維）
-  - Rank probability 向量（9維）
-  - Strength（1維）
-  - Winrate, Lead, Uncertainty（3維）
+### Input Files
+- **Training data:** `log_XD_policy_train.txt` (X = 1–9, representing the rank)
+- **Test data:** `X.txt` (X = file index)
 
-## 模型架構
+### Content Structure
+Each line contains:
+- Game ID: `Game X:`
+- Move: `B[coord]` or `W[coord]`
+- Feature vectors:
+  - Policy vector (9D)
+  - Value vector (9D)
+  - Rank probability vector (9D)
+  - Strength (1D)
+  - Winrate, Lead, Uncertainty (3D)
 
-### 1. 序列模型
-- **TinyTransformer**: 基於 Transformer 的序列模型
-- **BiLSTM**: 雙向 LSTM 模型
-- 特徵維度：79 維
-- 序列長度：120 步
+---
 
-### 2. Tabular 模型
-- **CatBoost** 或 **HistGradientBoostingClassifier**
-- 從遊戲中提取統計特徵
-- 包含開局、中局、終局的特徵
+## Model Architecture
+
+### 1. Sequence Models
+- **TinyTransformer**: Transformer-based sequence model
+- **BiLSTM**: Bidirectional LSTM model
+- Feature dimension: **79**
+- Sequence length: **120** moves
+
+### 2. Tabular Models
+- **CatBoost** or **HistGradientBoostingClassifier**
+- Extracts statistical features from each game
+- Includes features from opening, midgame, and endgame
 
 ### 3. Meta-learning
-- 使用 Logistic Regression 進行模型融合
-- 結合序列模型、Tabular 模型和側邊特徵
+- Uses **Logistic Regression** for model fusion
+- Combines sequence models, tabular models, and side features
 
-## 特徵工程
+---
 
-### 序列特徵（79維）
-- 基礎特徵：Policy, Value, RankP (各9維) + Strength, Winrate, Lead, Uncertainty
-- 衍生特徵：最大值、熵值（各6維）
-- 差分特徵：一階差分（37維）、二階差分（3維）
-- 位置特徵：顏色、正規化位置
+## Feature Engineering
 
-### Tabular 特徵
-- 統計特徵：均值、標準差、最小值、最大值、中位數、四分位數、偏度
-- 分段特徵：開局、中局、終局的特徵
-- 偏好特徵：熵值、最大值、眾數
+### Sequence Features (79D)
+- Base: Policy, Value, RankP (each 9D) + Strength, Winrate, Lead, Uncertainty
+- Derived: max values, entropies (each 6D)
+- Differences: first-order differences (37D), second-order differences (3D)
+- Position: color, normalized position
 
-### 側邊特徵（10維）
-- Policy/Value/RankP 熵值
-- 遊戲長度對數
-- Winrate 標準差
-- Lead 絕對值均值
-- Uncertainty 均值
-- 開局/中局/終局 Policy 熵值
+### Tabular Features
+- Statistics: mean, std, min, max, median, quartiles, skewness
+- Segments: opening/midgame/endgame features
+- Preferences: entropy, max, mode
 
-## 訓練流程
+### Side Features (10D)
+- Policy/Value/RankP entropies
+- Log game length
+- Winrate standard deviation
+- Mean absolute Lead
+- Mean Uncertainty
+- Opening/midgame/endgame Policy entropy
 
-1. **資料解析**：從日誌檔案中提取遊戲資料
-2. **特徵工程**：計算序列特徵和統計特徵
-3. **模型訓練**：
-   - 序列模型（Transformer + BiLSTM）
-   - Tabular 模型（CatBoost/HGBT）
-4. **模型融合**：使用 Meta-learning 整合所有模型
-5. **模型儲存**：儲存完整的模型堆疊
+---
 
-## 預測流程
+## Training Pipeline
+1. Data parsing: extract game data from logs
+2. Feature engineering: compute sequence and statistical features
+3. Model training:
+   - Sequence models (Transformer + BiLSTM)
+   - Tabular models (CatBoost/HGBT)
+4. Ensembling: meta-learning to combine all models
+5. Saving: save the complete model stack
 
-1. **載入模型**：從 pickle 檔案載入訓練好的模型
-2. **資料處理**：解析測試檔案並提取特徵
-3. **多模型預測**：
-   - 序列模型預測（多個視角）
-   - Tabular 模型預測
-   - 側邊特徵計算
-4. **模型融合**：使用 Meta-learner 整合預測結果
-5. **結果輸出**：生成 CSV 提交檔案
+---
 
-## 依賴套件
+## Inference Pipeline
+1. Load model: load the model stack from a pickle file
+2. Data processing: parse test files and extract features
+3. Multi-model prediction:
+   - Sequence predictions (multi-view)
+   - Tabular predictions
+   - Side feature computation
+4. Ensembling: meta-learner combines predictions
+5. Output: generate a CSV submission file
 
+---
+
+## Dependencies
 ```
 torch
 numpy
 pandas
 scikit-learn
-catboost (可選)
+catboost (optional)
 scipy
 pathlib
 concurrent.futures
@@ -144,37 +157,45 @@ random
 warnings
 ```
 
-## 輸出檔案
+---
 
-### 訓練階段
-- `model_stackx.pkl`: 完整的模型堆疊
-- `train_summary.json`: 訓練摘要資訊
+## Outputs
 
-### 預測階段
-- `submission.csv`: 預測結果（包含 id 和 rank 欄位）
+### Training Stage
+- `model_stackx.pkl`: Complete stacked model
+- `train_summary.json`: Training summary information
 
-## 注意事項
+### Prediction Stage
+- `submission.csv`: Prediction results (includes `id` and `rank` columns)
 
-1. **GPU 支援**：建議使用 GPU 進行訓練以提升速度
-2. **記憶體需求**：序列模型需要較多記憶體，建議至少 8GB RAM
-3. **訓練時間**：完整訓練約需 2-4 小時（取決於硬體配置）
-4. **模型大小**：完整模型檔案約 100-200MB
+---
 
-## 效能指標
+## Notes
+1. **GPU support:** GPU training is recommended for speed.
+2. **Memory:** Sequence models require more memory; at least **8GB RAM** is recommended.
+3. **Training time:** Full training takes about **2–4 hours**, depending on hardware.
+4. **Model size:** The full model file is about **100–200MB**.
 
-- **序列模型準確率**：Transformer 約 38.5%，BiLSTM 約 36.5%
-- **Tabular 模型準確率**：約 20.3%
-- **融合模型準確率**：約 42.8%
+---
 
-## 故障排除
+## Performance Metrics
+- **Sequence model accuracy:** Transformer ~38.5%, BiLSTM ~36.5%
+- **Tabular model accuracy:** ~20.3%
+- **Ensembled model accuracy:** ~42.8%
 
-1. **記憶體不足**：減少 batch_size 或 seq_len
-2. **GPU 錯誤**：檢查 CUDA 版本相容性
-3. **檔案讀取錯誤**：確認資料路徑和檔案格式正確
-4. **模型載入失敗**：檢查 pickle 檔案是否完整
+---
 
-## 版本資訊
+## Troubleshooting
+1. **Out of memory:** reduce `batch_size` or `seq_len`
+2. **GPU errors:** check CUDA compatibility
+3. **File read errors:** verify data paths and file formats
+4. **Model loading failure:** ensure the pickle file is complete
 
-- **版本**：5.0
-- **最後更新**：2024年
-- **相容性**：Python 3.8+, PyTorch 1.12+
+---
+
+## Version Info
+- **Version:** 5.0
+- **Last updated:** 2024
+- **Compatibility:** Python 3.8+, PyTorch 1.12+
+
+
